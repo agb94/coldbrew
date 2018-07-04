@@ -21,7 +21,8 @@ def analyzer(s: str):
         curr_token += c
     return tokens
 
-def compute_score(TSNB, TSB, LS, TI, LI, TL, LL):
+#def compute_score(TSNB, TSB, LS, TI, LI, TL, LL):
+def compute_score(TSB, LS, TI, LI, TL, LL):
     from math import sin, cos
     from operator import add, sub, mul, neg
     
@@ -33,9 +34,8 @@ def compute_score(TSNB, TSB, LS, TI, LI, TL, LL):
 
     div = lambda a, b: protectedDiv(a, b)
     
-    # GP-learned model (Learning-to-Rank)
-    # This is dummy, not the final one
-    return neg(add(mul(TSB, sub(sin(neg(add(TSNB, TSB))), LS)), LI))
+    # GP-learned Formula (Learning-to-Rank)
+    return neg(add(mul(TSB, sub(sin(neg(LI)), LS)), LI))
 
 def predict_unit(ingredient: str, source: list):
     assert type(ingredient) == str
@@ -43,8 +43,8 @@ def predict_unit(ingredient: str, source: list):
 
     # Use sklearn's CountVectorizer for BOW
     vectorizers = [
-        CountVectorizer(ngram_range=(1,1), lowercase=False, binary=False, analyzer=analyzer),
-        CountVectorizer(ngram_range=(1,1), lowercase=False, binary=True, analyzer=analyzer)
+        #CountVectorizer(ngram_range=(1,1), lowercase=False, binary=False, analyzer=analyzer), #TSNB
+        CountVectorizer(ngram_range=(1,1), lowercase=False, binary=True, analyzer=analyzer) #TSB
     ]
 
     vectors = [ vectorizer.fit_transform([ingredient] + source).toarray() for vectorizer in vectorizers ]
