@@ -1,6 +1,6 @@
 # coldbrew
 
-CodRep-competition / KAIST
+[CodRep-competition](https://github.com/KTH/CodRep-competition) / KAIST
 
 ## Implementation Environment
 
