@@ -121,7 +121,7 @@ if __name__ == "__main__":
                     print("********************************************")
                     print("Wrong!")
                     print("Your answer: {}, Solution: {}".format(line, sol))
-                    print("Current Recall: {}/{} = {}".format(incorrect, incorrect + correct, correct / float(incorrect + correct)))
+                    print("Current Recall: {}/{} = {}".format(correct, incorrect + correct, correct / float(incorrect + correct)))
                     print("********************************************")
                 else:
                     correct += 1
