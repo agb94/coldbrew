@@ -15,5 +15,6 @@ $ pip install scipy
 
 ## How to run?
 ```shell
-$ python predictor.py [path_to_dataset]
+$ python predictor.py [-v] [path_to_dataset]
 ```
+When you evaluate the answers, turn off the -v option. 

@@ -1,10 +1,13 @@
 import os
 import argparse
+import difflib
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
 from scipy.spatial.distance import cosine, jaccard, hamming, euclidean, dice
 
-def analyzer(s):
+def analyzer(s: str):
+    assert type(s) == str
+
     tokens = list()
     curr_token = ''
     for c in s:
@@ -20,7 +23,7 @@ def analyzer(s):
 
 def compute_score(TSNB, TSB, LS, TI, LI, TL, LL):
     from math import sin, cos
-    from operator import add, sub, mul, neg, pow
+    from operator import add, sub, mul, neg
     
     def protectedDiv(left, right):
         try:
@@ -34,8 +37,9 @@ def compute_score(TSNB, TSB, LS, TI, LI, TL, LL):
     # This is dummy, not the final one
     return neg(add(mul(TSB, sub(sin(neg(add(TSNB, TSB))), LS)), LI))
 
-def predict_unit(ingredient, source):
-    import difflib
+def predict_unit(ingredient: str, source: list):
+    assert type(ingredient) == str
+    assert type(source) == list and all(type(line) == str for line in source)
 
     # Use sklearn's CountVectorizer for BOW
     vectorizers = [
@@ -114,9 +118,10 @@ if __name__ == "__main__":
                 sol = open(path.replace('Tasks', 'Solutions'), 'r').read()
                 if not line == int(sol.strip()):
                     incorrect += 1
-                    print("Answer: {}".format(line))
-                    print("solution: {}".format(sol))
-                    print(incorrect, correct, correct / float(incorrect + correct))
+                    print("********************************************")
+                    print("Wrong!")
+                    print("Your answer: {}, Solution: {}".format(line, sol))
+                    print("Current Recall: {}/{} = {}".format(incorrect, incorrect + correct, correct / float(incorrect + correct)))
                     print("********************************************")
                 else:
                     correct += 1
