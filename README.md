@@ -6,13 +6,6 @@
 
 * Python 3.5.0
 
-## Installing dependencies
-```shell
-$ pip install numpy 
-$ pip install sklearn
-$ pip install scipy
-```
-
 ## How to run?
 ```shell
 $ python predictor.py [-v] [path_to_dataset]
