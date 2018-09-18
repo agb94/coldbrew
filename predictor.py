@@ -60,12 +60,18 @@ def extract_unit(ingredient, source):
     
     return features
 
-def predict_unit(ingredient: str, source: list):
+def predict_unit(ingredient: str, source: list, verbose=False):
     assert type(ingredient) == str
     assert type(source) == list and all(type(line) == str for line in source)
 
     features = extract_unit(ingredient, source)
     values = [compute_score(*row) for row in features]
+
+    if verbose:
+        print("===========================================")
+        print(ingredient)
+        for i, lineno in enumerate(sorted(range(len(values)), key=lambda k: values[k])[:20]):
+            print("{}\t{:.6f}\t{:>5}:\t{}".format(i+1, values[lineno], lineno + 1, source[lineno]))
     min_value = min(values)
     candidates = list()
     for j, value in enumerate(values):
@@ -75,12 +81,12 @@ def predict_unit(ingredient: str, source: list):
     # Return the middle one if many candidates exist
     return candidates[len(candidates)//2] + 1
 
-def predict(path):
+def predict(path, verbose=False):
     with open(path, 'r') as f:
         lines = f.readlines()
         ingredient = lines[0].strip()
         source = list(map(lambda l: l.strip(), lines[2:]))
-        return predict_unit(ingredient, source)
+        return predict_unit(ingredient, source, verbose=verbose)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -96,7 +102,7 @@ if __name__ == "__main__":
         filename = os.fsdecode(file)
         if filename.endswith(".txt"):
             path = os.path.abspath(os.path.join(directory.decode('utf-8'), filename))
-            line = predict(path)
+            line = predict(path, verbose=args.v)
             print("{} {}".format(path, line))
             if args.v:
                 # verbose mode
