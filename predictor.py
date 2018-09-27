@@ -4,25 +4,10 @@ import argparse
 MODEL = "div(MBS, neg(mul(HD, div(LS, MBS))))"
 FEATURE_NAMES = ['LS', 'HD', 'MBS']
 """
-- MBS: the sum of matching blocks' size
+- MBS: The Sum of Matching Blocks' Size
 - HD: Hamming Distance
 - LS: Lexical Similarity
 """
-
-def analyzer(s: str):
-    assert type(s) == str
-    tokens = list()
-    token = ''
-    for c in s:
-        if not c.isalnum():
-            if token:
-                tokens.append(curr_token)
-                curr_token = ''
-            if c != ' ' and not c in [' ', '(', ')', ',']:
-                tokens.append(c)
-            continue
-        token += c
-    return tokens
 
 def compute_score(*args):
     from math import sin, cos
@@ -46,8 +31,7 @@ def extract_unit(ingredient, source):
     import difflib
     features = list()
     max_mbs = 0
-    for i in range(len(source)):
-        line = source[i]
+    for line in source:
         seq_matcher = difflib.SequenceMatcher(lambda x: x == " ", ingredient, line)
         ls = 1 - seq_matcher.ratio()
         hd = len(list(filter(lambda op: op[0] != 'equal', seq_matcher.get_opcodes())))
@@ -56,6 +40,7 @@ def extract_unit(ingredient, source):
         features.append([ls, hd, mbs])
 
     for row in features:
+        # Normalization
         row[-1] /= float(max_mbs)
     
     return features
@@ -65,21 +50,31 @@ def predict_unit(ingredient: str, source: list, verbose=False):
     assert type(source) == list and all(type(line) == str for line in source)
 
     features = extract_unit(ingredient, source)
-    values = [compute_score(*row) for row in features]
-
     if verbose:
+        # verbose mode
+        values = [compute_score(*row) for row in features]
         print("===========================================")
         print(ingredient)
         for i, lineno in enumerate(sorted(range(len(values)), key=lambda k: values[k])[:20]):
             print("{}\t{:.6f}\t{:>5}:\t{}".format(i+1, values[lineno], lineno + 1, source[lineno]))
-    min_value = min(values)
-    candidates = list()
-    for j, value in enumerate(values):
-        if value == min_value:
-            candidates.append(j)
 
-    # Return the middle one if many candidates exist
-    return candidates[len(candidates)//2] + 1
+    min_value = compute_score(*features[0])
+    candidates = list()
+    for i, row in enumerate(features):
+        score = compute_score(*row)
+        if score > min_value:
+            pass
+        elif score < min_value:
+            min_value = score
+            candidates = [i]
+        else:
+            candidates.append(i)
+
+    # 1. Return the middle one if many candidates exist
+    # return candidates[len(candidates)//2] + 1
+
+    # 2. Return the last one if many candidates exist
+    return candidates[-1] + 1
 
 def predict(path, verbose=False):
     with open(path, 'r') as f:
