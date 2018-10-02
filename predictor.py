@@ -1,5 +1,10 @@
 import os
 import argparse
+from pygments.lexers import get_lexer_by_name
+from pygments.token import string_to_tokentype
+
+JL = get_lexer_by_name('java')
+TOKENTYPE_KEYWORD = string_to_tokentype('Token.Keyword')
 
 class Feature:
     """
@@ -9,10 +14,11 @@ class Feature:
     - HD: Hamming Distance
     - LS: Lexical Similarity
     """
-    def __init__(self, ls, hd, mbs):
+    def __init__(self, ls, hd, mbs, ks):
         self.ls = float(ls)
         self.hd = float(hd)
         self.mbs = float(mbs)
+        self.ks = float(ks)
     
     def get_score(self):
         from math import sin, cos
@@ -26,13 +32,25 @@ def extract_unit(ingredient, source):
     features = list()
     max_mbs = 0
 
+    keywords = []
+    for token in JL.get_tokens(ingredient):
+        if token[0] == TOKENTYPE_KEYWORD:
+            keywords.append(token[1])
+
     for line in source:
+
+        line_keywords = []
+        for token in JL.get_tokens(line):
+            if token[0] == TOKENTYPE_KEYWORD:
+                line_keywords.append(token[1])
+        ks = 1 - difflib.SequenceMatcher(None,keywords,line_keywords).ratio()
+
         seq_matcher = difflib.SequenceMatcher(lambda x: x == " ", ingredient, line)
         ls = 1 - seq_matcher.ratio()
         hd = len(list(filter(lambda op: op[0] != 'equal', seq_matcher.get_opcodes())))
         mbs = sum(map(lambda b: b.size, seq_matcher.get_matching_blocks()))
         max_mbs = max(mbs, max_mbs)
-        features.append(Feature(ls, hd, mbs))
+        features.append(Feature(ls, hd, mbs, ks))
 
     for feature in features:
         # Normalization
