@@ -17,7 +17,7 @@ Based on the datasets provided by CodRep
 
 |  Dataset  |         Score        |
 |:---------:|---------------------:|
-| Dataset 1 | 0.08921618299407885  |
-| Dataset 2 | 0.0800879525367267   |
+| Dataset 1 | 0.08924074631026659  |
+| Dataset 2 | 0.07952454665155702  |
 | Dataset 3 | 0.05899670755294418  |
 | Dataset 4 | 0.06933221974550138  |
