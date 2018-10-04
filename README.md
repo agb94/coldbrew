@@ -6,6 +6,11 @@
 
 * Python 3.5.0
 
+## Installing Dependencies
+```shell
+$ pip install pygments
+```
+
 ## How to run?
 ```shell
 $ python predictor.py [-v] [path_to_dataset]
@@ -17,7 +22,7 @@ Based on the datasets provided by CodRep
 
 |  Dataset  |         Score        |
 |:---------:|---------------------:|
-| Dataset 1 | 0.08638102370802564  |
-| Dataset 2 | 0.07776869239685896  |
-| Dataset 3 | 0.05467708852256885  |
-| Dataset 4 | 0.0685107662480941   |
+| Dataset 1 | 0.08683618984366283  |
+| Dataset 2 | 0.07779029114505186  |
+| Dataset 3 | 0.05387206874287367  |
+| Dataset 4 | 0.06880261319779025  |

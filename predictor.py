@@ -1,71 +1,92 @@
 import os
 import argparse
+import difflib
+import multiprocessing as mp
 from pygments.lexers import get_lexer_by_name
 from pygments.token import Keyword, Text
 
-JL = get_lexer_by_name('java')
-# See java-keywords-stat.txt
-SELECTED_KEYWORDS = ['try', 'case', 'enum', 'switch', 'catch', 'package', 'import', 'class', 'for', 'interface',
-        'void', 'else', 'static', 'return', 'if', 'long', 'while', 'native']
+MULTIPROCESSING = True
+
+class JavaKeywords:
+    lexer = get_lexer_by_name('java')
+    selected_keywords = [
+        'try', 'case', 'enum', 'switch', 'catch', 'package',
+        'import', 'class', 'for', 'interface', 'void', 'else',
+        'static', 'return', 'if', 'long', 'while', 'native']
+
+    @classmethod
+    def get(cls, source):
+        keywords = []
+        for token_type, token in cls.lexer.get_tokens(source):
+            if token_type in Keyword and token in cls.selected_keywords:
+                keywords.append(token)
+        return keywords
 
 class Feature:
     """
-    * SCORING MODEL: div(MBS, neg(mul(HD, div(LS, MBS))))
+    * GP-learned scoring model: div(MBS, neg(mul(HD, div(LS, MBS))))
     
     - MBS: The Sum of Matching Blocks' Size
-    - HD: Hamming Distance
+    - ED: Edit Distance
     - LS: Lexical Similarity
+    - KS: Keyword Similarity
     """
-    def __init__(self, ls, hd, mbs, ks):
+    KS_MAGNIFIER = 1.5 # hyperparameter [0.5, 1, 1.5, 2, 2.5, 3]
+
+    def __init__(self, ls, ed, mbs, ks):
         self.ls = float(ls)
-        self.hd = float(hd)
+        self.ed = float(ed)
         self.mbs = float(mbs)
         self.ks = float(ks)
-    
+
     def __str__(self):
-        return "{:6.3f}l {:6.3f}h {:6.3f}m {:6.3f}k".format(self.ls, self.hd, self.mbs, self.ks)
+        return "{:6.3f}l {:6.3f}h {:6.3f}m {:6.3f}k".format(self.ls, self.ed, self.mbs, self.ks)
 
     def get_score(self):
         from math import sin, cos
         from operator import add, sub, mul, neg
         div = lambda a, b: a / b if b != 0 else 1 # protected division operator
-        return add(div(self.mbs, neg(mul(self.hd, div(self.ls, self.mbs)))), self.ks)
+        return div(self.mbs, neg(mul(self.ed, div(self.ls, self.mbs)))) + self.ks * Feature.KS_MAGNIFIER
 
-def extract_unit(ingredient, source):
-    import difflib
-
-    features = list()
-    max_mbs = 0
-
-    keywords = []
-    for token in JL.get_tokens(ingredient):
-        if token[0] in Keyword and token[1] in SELECTED_KEYWORDS:
-            keywords.append(token[1])
-
-    for line in source:
-        line_keywords = []
-        for token in JL.get_tokens(line):
-            if token[0] in Keyword and token[1] in SELECTED_KEYWORDS:
-                line_keywords.append(token[1])
-        ks = 1 - difflib.SequenceMatcher(None,keywords,line_keywords).ratio()
+    @classmethod
+    def new(cls, ingredient, line, ing_keywords, line_keywords):
+        ks = 1 - difflib.SequenceMatcher(None, ing_keywords, line_keywords).ratio()
         seq_matcher = difflib.SequenceMatcher(lambda x: x == " ", ingredient, line)
         ls = 1 - seq_matcher.ratio()
-        hd = len(list(filter(lambda op: op[0] != 'equal', seq_matcher.get_opcodes())))
+        ed = len(list(filter(lambda op: op[0] != 'equal', seq_matcher.get_opcodes())))
         mbs = sum(map(lambda b: b.size, seq_matcher.get_matching_blocks()))
-        max_mbs = max(mbs, max_mbs)
-        features.append(Feature(ls, hd, mbs, ks))
+        return cls(ls, ed, mbs, ks)
 
+"""
+Function Wrappers for Multiprocessing
+"""
+#====================================
+def calculate_score(feature):
+    return feature.get_score()
+
+def get_feature(args):
+    return Feature.new(*args)
+#====================================
+
+def extract_unit(ingredient, source, pool):
+    features = list()
+    ing_keywords = JavaKeywords.get(ingredient)
+
+    if pool:
+        features = pool.map(get_feature, list(map(lambda line: (ingredient, line, ing_keywords, JavaKeywords.get(line)), source)))
+    else:
+        features = list(map(lambda line: Feature.new(ingredient, line, ing_keywords, JavaKeywords.get(line)), source))
+    max_mbs = float(max([f.mbs for f in features]))
     for feature in features:
-        # Normalization
-        feature.mbs /= float(max_mbs)
-    
+        feature.mbs /= max_mbs
+
     return features
 
-def predict_unit(ingredient: str, source: list, verbose=False):
+def predict_unit(ingredient: str, source: list, pool, verbose=False):
     assert type(ingredient) == str
     assert type(source) == list and all(type(line) == str for line in source)
 
-    features = extract_unit(ingredient, source)
+    features = extract_unit(ingredient, source, pool)
     if verbose:
         # verbose mode
         values = [feature.get_score() for feature in features]
@@ -74,10 +95,14 @@ def predict_unit(ingredient: str, source: list, verbose=False):
         for i, lineno in enumerate(sorted(range(len(values)), key=lambda k: values[k])[:20]):
             print("{}\t{:.6f}\t{}\t{:>5}:\t{}".format(i+1, values[lineno], features[lineno], lineno + 1, source[lineno]))
 
-    min_value = features[0].get_score()
+    if pool:
+        scores = pool.map(calculate_score, features)
+    else:
+        scores = list(map(lambda f: f.get_score(), features))
+
+    min_value = scores[0]
     candidates = list()
-    for i, feature in enumerate(features):
-        score = feature.get_score()
+    for i, score in enumerate(scores):
         if score > min_value:
             pass
         elif score < min_value:
@@ -88,28 +113,30 @@ def predict_unit(ingredient: str, source: list, verbose=False):
 
     return candidates[-1] + 1
 
-def predict(path, verbose=False):
+def predict(path, pool, verbose=False):
     with open(path, 'r') as f:
         lines = f.readlines()
         ingredient = lines[0].strip()
         source = list(map(lambda l: l.strip(), lines[2:]))
-        return predict_unit(ingredient, source, verbose=verbose)
+        return predict_unit(ingredient, source, pool, verbose=verbose)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('path', type=str)
     parser.add_argument('-v', action='store_true')
     args = parser.parse_args()
-    
+
     if args.v:
         correct, incorrect = 0, 0
+
+    pool = mp.Pool(mp.cpu_count() - 1) if MULTIPROCESSING else None
 
     directory = os.fsencode(os.path.join(args.path, 'Tasks'))
     for file in os.listdir(directory):
         filename = os.fsdecode(file)
         if filename.endswith(".txt"):
             path = os.path.abspath(os.path.join(directory.decode('utf-8'), filename))
-            line = predict(path, verbose=args.v)
+            line = predict(path, pool, verbose=args.v)
             print("{} {}".format(path, line))
             if args.v:
                 # verbose mode
