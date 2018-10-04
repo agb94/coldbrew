@@ -75,7 +75,8 @@ def extract_unit(ingredient, source, pool):
     if pool:
         features = pool.map(get_feature, list(map(lambda line: (ingredient, line, ing_keywords, JavaKeywords.get(line)), source)))
     else:
-        features = list(map(lambda line: Feature.new(ingredient, line, ing_keywords, JavaKeywords.get(line)), source))
+        features = list(map(lambda line: get_feature((ingredient, line, ing_keywords, JavaKeywords.get(line))), source))
+
     max_mbs = float(max([f.mbs for f in features]))
     for feature in features:
         feature.mbs /= max_mbs
@@ -98,20 +99,16 @@ def predict_unit(ingredient: str, source: list, pool, verbose=False):
     if pool:
         scores = pool.map(calculate_score, features)
     else:
-        scores = list(map(lambda f: f.get_score(), features))
+        scores = list(map(lambda f: calculate_score(f), features))
 
-    min_value = scores[0]
-    candidates = list()
-    for i, score in enumerate(scores):
-        if score > min_value:
-            pass
-        elif score < min_value:
-            min_value = score
-            candidates = [i]
-        else:
-            candidates.append(i)
+    min_value = min(scores)
+    solution = -1
+    for i in reversed(range(len(scores))):
+        if scores[i] == min_value:
+            solution = i + 1
+            break
 
-    return candidates[-1] + 1
+    return solution
 
 def predict(path, pool, verbose=False):
     with open(path, 'r') as f:
